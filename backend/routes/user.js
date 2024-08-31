@@ -1,7 +1,7 @@
 const express = require("express");
 const { authMiddleware } = require("../authMiddleware.js");
 const z = require("zod");
-const User = require("../db.js");
+const { User, Account } = require("../db.js");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config");
 
@@ -9,7 +9,7 @@ const signupBody = z.object({
   username: z.string().email(),
   firstName: z.string(),
   secondName: z.string(),
-  password: z.string(),
+  password: z.string().min(6),
 });
 
 const searchQuery = z.object({
@@ -31,45 +31,59 @@ const router = express.Router();
 
 router.post("/signup", async (req, res) => {
   const { success } = signupBody.safeParse(req.body);
-
-  console.log(User);
-
+  console.log(req.body);
   if (!success) {
+    console.log("Invalid Inputs");
     return res.status(401).json({
       message: "Invalid Inputs",
     });
   }
 
-  const existingUser = await User.findOne({
-    username: req.body.username,
-  });
+  try {
+    const existingUser = await User.findOne({
+      username: req.body.username,
+    });
 
-  if (existingUser) {
-    return res.status(409).json({
-      message: "Email already taken/ Incorrect Inputs",
+    console.log(existingUser, "existingUser");
+    if (existingUser) {
+      return res.status(409).json({
+        message: "Email already Registered. Please SignIn",
+      });
+    }
+
+    const { username, password, firstName, secondName } = req.body;
+    console.log(username, password, firstName, secondName);
+    const user = await User.create({
+      username: username,
+      password: password,
+      firstName: firstName,
+      secondName: secondName,
+    });
+
+    const userId = user._id;
+
+    await Account.create({
+      userId,
+      balance: 1 + Math.random() * 10000,
+    });
+
+    const token = jwt.sign(
+      {
+        userId,
+      },
+      JWT_SECRET
+    );
+
+    res.status(200).json({
+      message: "User created successfully",
+      token: token,
+    });
+  } catch (error) {
+    console.log("Error in creating user", error);
+    res.status(401).json({
+      message: "server error",
     });
   }
-
-  const user = await User.create({
-    username: req.body.username,
-    password: req.body.password,
-    firstName: req.body.firstName,
-    secondName: req.body.secondName,
-  });
-
-  const userId = user._id;
-
-  const token = jwt.sign(
-    {
-      userId,
-    },
-    JWT_SECRET
-  );
-
-  res.json({
-    message: "User created successfully",
-    token: token,
-  });
 });
 
 router.post("/signin", async (req, res) => {
@@ -103,6 +117,7 @@ router.post("/signin", async (req, res) => {
 
     res.json({
       message: "SignedIn Successfully!! Here is your token",
+      user,
       token: token,
     });
     return;
@@ -146,6 +161,7 @@ router.get("/bulk", async (req, res) => {
       ],
     });
 
+    console.log(users, ">>>");
     return res.status(200).json({
       user: users.map((user) => ({
         username: user.username,

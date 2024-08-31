@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 dotenv.config();
 
 const DB_URL = process.env.MONGODB_URL;
+console.log(DB_URL);
 mongoose.connect(DB_URL);
 
 // Check if the connection is successful
@@ -18,7 +19,7 @@ mongoose.connection.on("error", (err) => {
 
 const { Schema } = mongoose;
 
-const userSchema = new Schema({
+const userSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
@@ -31,6 +32,19 @@ const userSchema = new Schema({
   firstName: { type: String, required: true, trim: true, maxLength: 50 },
   secondName: { type: String, required: true, trim: true, maxLength: 50 },
   password: { type: String, required: true, minLength: 6 },
+});
+
+const accountSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+
+  balance: {
+    type: Number,
+    required: true,
+  },
 });
 
 userSchema.pre("save", async function (next) {
@@ -63,6 +77,10 @@ userSchema.methods.validatePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password); //this => current document
 };
 
-const User = mongoose.model("User", userSchema);
+const Account = mongoose.model("Account", accountSchema);
+const User = mongoose.model("Person", userSchema);
 
-module.exports = User;
+module.exports = {
+  User,
+  Account,
+};

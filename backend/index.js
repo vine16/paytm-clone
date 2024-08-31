@@ -11,7 +11,14 @@ dotenv.config();
 
 const PORT = process.env.PORT;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:3000", // Only allow this origin
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    credentials: true, // Enable Access-Control-Allow-Credentials
+  })
+);
+
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }));
 
@@ -20,5 +27,5 @@ app.use(bodyParser.json());
 app.use("/api/v1", mainRouter);
 
 app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}`);
+  console.log(`App listening on port ${PORT}`);
 });
